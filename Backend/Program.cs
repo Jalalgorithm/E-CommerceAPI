@@ -16,6 +16,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         migration => migration.MigrationsAssembly("Backend"));
 }); 
 
+builder.Services.AddAutoMapper(typeof(ApplicationDbContext));
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
