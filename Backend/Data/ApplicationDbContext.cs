@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Backend.Model;
+using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Data
 {
@@ -9,5 +10,7 @@ namespace Backend.Data
         {
             
         }
+        public DbSet<Product> Products  { get; set; }
+        public DbSet<Contact> Contacts { get; set; }
     }
 }
