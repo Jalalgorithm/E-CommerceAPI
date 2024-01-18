@@ -47,6 +47,8 @@ namespace Backend.Controllers
         {
             var AddProdcut = _mapper.Map<Product>(createProductDto);
 
+            return Ok(_mapper.Map<CreateProductDto>(AddProdcut));
+
 
         }
     }
