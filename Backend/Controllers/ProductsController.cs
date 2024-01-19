@@ -14,11 +14,13 @@ namespace Backend.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IWebHostEnvironment _environment;
 
-        public ProductsController(ApplicationDbContext context , IMapper mapper)
+        public ProductsController(ApplicationDbContext context , IMapper mapper , IWebHostEnvironment environment)
         {
             _context = context;
             _mapper = mapper;
+            _environment = environment;
         }
 
         [HttpGet]
@@ -45,9 +47,28 @@ namespace Backend.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateProduct (CreateProductDto createProductDto)
         {
-            var AddProdcut = _mapper.Map<Product>(createProductDto);
+            if(createProductDto.Image == null)
+            {
+                ModelState.AddModelError("Image", "The Image file is required");
+                return BadRequest(ModelState);
+            }
 
-            return Ok(_mapper.Map<CreateProductDto>(AddProdcut));
+            var fileName = DateTime.Now.ToString("yyyyMMddHHmmssffff");
+            fileName += Path.GetExtension(createProductDto.Image.FileName);
+
+            string imagesFolder = _environment.WebRootPath + "/images/products";
+
+            using(var stream =System.IO.File.Create(imagesFolder+fileName))
+            {
+                await createProductDto.Image.CopyToAsync(stream);
+            }
+
+            var AddProduct = _mapper.Map<Product>(createProductDto);
+
+            await _context.Products.AddAsync(AddProduct);
+            await _context.SaveChangesAsync();
+
+            return Ok(_mapper.Map<CreateProductDto>(AddProduct));
 
 
         }
