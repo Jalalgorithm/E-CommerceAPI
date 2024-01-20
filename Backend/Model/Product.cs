@@ -19,5 +19,8 @@ namespace Backend.Model
         public string Brand { get; set; } = "";
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
+        public int CategoryId { get; set; }
+        public Category Category { get; set; }
+
     }
 }
