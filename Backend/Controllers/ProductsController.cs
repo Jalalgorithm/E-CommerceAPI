@@ -33,22 +33,131 @@ namespace Backend.Controllers
             return Ok(_mapper.Map<ICollection<GetCategoryDto>>(categories));
         }
         [HttpGet]
-        public async Task<IActionResult> GetProducts()
+        public async Task<IActionResult> GetProducts(string? search ,string? category , int? minPrice , int? maxPrice ,
+            string? sort , string? order, int? page)
         {
-            var products = await _context.Products.ToListAsync();
-                //.Include(c => c.Category)
-                //.Select(product => new GetProductDto
-                //{
-                //    Id=product.Id,
-                //    Name = product.Name,
+            IQueryable<Product> query =  _context.Products;
+
+            if (search is not null)
+            {
+                query = query.Where(p=>p.Name.Contains(search)|| p.Description.Contains(search));
+            }
+
+            if (category is not null)
+            {
+                query = query.Where(p=>p.Category.Name.ToLower() == category.ToLower());
+            }
+
+            if (minPrice is not null)
+            {
+                query = query.Where(p => p.Price >= minPrice);
+            }
+
+            if (maxPrice is not null)
+            {
+                query= query.Where(p=>p.Price <= maxPrice);
+            }
+
+            if (sort is null)
+                sort = "id";
+
+            if (order is null || order != "asc")
+                order = "desc";
+
+            if (sort.ToLower()=="name")
+            {
+                if (order=="asc")
+                {
+                    query = query.OrderBy(p => p.Name);
+                }
+                else
+                {
+                    query = query.OrderByDescending(p => p.Name);
+                }
+            }
+
+            else if (sort.ToLower() == "brand")
+            {
+                if (order == "asc")
+                {
+                    query = query.OrderBy(p => p.Brand);
+                }
+                else
+                {
+                    query = query.OrderByDescending(p => p.Brand);
+                }
+            }
+            else if (sort.ToLower() == "category")
+            {
+                if (order == "asc")
+                {
+                    query = query.OrderBy(p => p.Category.Name);
+                }
+                else
+                {
+                    query = query.OrderByDescending(p => p.Category.Name);
+                }
+            }
+            else if (sort.ToLower() == "price")
+            {
+                if (order == "asc")
+                {
+                    query = query.OrderBy(p => p.Price);
+                }
+                else
+                {
+                    query = query.OrderByDescending(p => p.Price);
+                }
+            }
+
+            else if (sort.ToLower() == "date")
+            {
+                if (order == "asc")
+                {
+                    query = query.OrderBy(p => p.CreatedAt);
+                }
+                else
+                {
+                    query = query.OrderByDescending(p => p.CreatedAt);
+                }
+            }
+            else
+            {
+                if (order == "asc")
+                {
+                    query = query.OrderBy(p => p.Id);
+                }
+                else
+                {
+                    query = query.OrderByDescending(p => p.Id);
+                }
+            }
+
+            if (page is null || page < 1)
+                page = 1;
+
+            int pageSize = 5;
+            int totalPages = 0;
+
+            decimal count = query.Count();
+            totalPages = (int)Math.Ceiling(count/pageSize);
+
+            query = query.Skip((int)(page - 1) * pageSize).Take(pageSize);
 
 
-                //}).ToListAsync();
+            var products = await query.ToListAsync();
 
-            if (products is null)
-                return NotFound();
 
-            return Ok(products);
+            var response = new
+            {
+                Products = products,
+                TotalPages = totalPages,
+                PageSize = pageSize,
+                Page = page,
+            };
+
+
+            return Ok(response);
         }
 
         [HttpGet("{id}")]
