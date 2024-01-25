@@ -16,13 +16,11 @@ namespace Backend.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-        private readonly IMapper _mapper;
         private readonly IWebHostEnvironment _environment;
 
-        public ProductsController(ApplicationDbContext context , IMapper mapper , IWebHostEnvironment environment)
+        public ProductsController(ApplicationDbContext context , IWebHostEnvironment environment)
         {
             _context = context;
-            _mapper = mapper;
             _environment = environment;
         }
 
@@ -205,6 +203,7 @@ namespace Backend.Controllers
                     {
                         Id = product.Id,
                         Name = product.Name,
+                        Description = product.Description,
                         QuantityInStock = product.QuantityInStock,
                         DisplayImage = product.DisplayImage,
                         Brand = product.Brand,

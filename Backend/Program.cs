@@ -16,7 +16,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         migration => migration.MigrationsAssembly("Backend"));
 }); 
 
-builder.Services.AddAutoMapper(typeof(Program));
 
 var app = builder.Build();
 
