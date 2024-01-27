@@ -13,6 +13,8 @@ namespace Backend.Data
         public DbSet<Product> Products  { get; set; }
         public DbSet<Contact> Contacts { get; set; }
         public DbSet<Category> Categories { get; set; }
+        public DbSet<User> Users { get; set; }
+        public DbSet<PasswordReset> PasswordResets { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
