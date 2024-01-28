@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
@@ -27,23 +28,6 @@ namespace Backend.Controllers
             _configuration = configuration;
             _context = context;
         }
-        //[HttpGet("testmode")]
-        //public IActionResult TestToken()
-        //{
-        //    User user = new User()
-        //    {
-        //        Id = 1,
-        //        Role = "Admin"
-        //    };
-
-        //    string jwt = CreateJwt(user);
-        //    var response = new
-        //    {
-        //        JwToken = jwt
-        //    };
-
-        //    return Ok(response);
-        //}
 
         [HttpPost("Register")]
         public async Task<ApiResponse> Register(UserDto userDto)
@@ -194,6 +178,11 @@ namespace Backend.Controllers
             await _context.SaveChangesAsync();
 
             // send the password token as email to the user using sendgrid
+
+            return new ApiResponse
+            {
+
+            };
         }
 
         [HttpPost("ResetPassword")]
@@ -230,11 +219,126 @@ namespace Backend.Controllers
 
             await _context.SaveChangesAsync();
 
+            return new ApiResponse
+            {
+
+            };
         }
 
-        //[Authorize]
-        //[HttpGet("Profile")]
-        //public async Task<ApiResponse> GetProfile()
+        [Authorize]
+        [HttpGet("Profile")]
+        public async Task<ApiResponse> GetProfile()
+        {
+            var id = JwtReader.GetUserId(User);
+
+            var user = await _context.Users.FindAsync(id);
+
+            if(user is null)
+            {
+                Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+
+                return new ApiResponse
+                {
+                    ErrorMessage = "User details unavailable"
+                };
+            }
+
+            var DisplayUser = new UserProfileDto()
+            {
+                Id = user.Id,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Email = user.Email,
+                Phone = user.Phone,
+                Address = user.Address,
+                Role = user.Role,
+                CreatedAt = user.CreatedAt
+            };
+
+            return new ApiResponse
+            {
+                Result = DisplayUser
+            };
+
+        }
+
+        [Authorize]
+        [HttpPut("UpdateProfile")]
+        public async Task<ApiResponse> UpdateProfile(UserProfileUpdateDto userUpdateDto)
+        {
+            var id = JwtReader.GetUserId(User);
+
+            var user = await _context.Users.FindAsync(id);
+
+            if (user is null)
+            {
+                Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+
+                return new ApiResponse
+                {
+                    ErrorMessage = "User not found"
+                };
+            }
+
+            user.FirstName = userUpdateDto.FirstName;
+            user.LastName = userUpdateDto.LastName;
+            user.Phone = userUpdateDto.Phone ?? "";
+            user.Email = userUpdateDto.Email;
+            user.Address = userUpdateDto.Address;
+
+            await _context.SaveChangesAsync();
+
+            var DisplayUser = new UserProfileDto()
+            {
+                Id = user.Id,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Email = user.Email,
+                Phone = user.Phone ?? "",
+                Address = user.Address,
+                Role = user.Role,
+                CreatedAt = user.CreatedAt
+            };
+
+            return new ApiResponse
+            {
+                Result = DisplayUser
+            };
+
+        }
+
+        [Authorize]
+        [HttpPut("UpdatePassword")]
+        public async Task<ApiResponse> UpdatePassword([Required , MinLength(8)]string password)
+        {
+            var id = JwtReader.GetUserId(User);
+
+            var user = await _context.Users.FindAsync(id);
+
+            if (user is null)
+            {
+                Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+
+                return new ApiResponse
+                {
+                    ErrorMessage = "User not found"
+                };
+            }
+
+            var passwordHasher = new PasswordHasher<User>();
+            var encryptedPassword = passwordHasher.HashPassword(new User(), password);
+
+            user.Password = encryptedPassword;
+
+            await _context.SaveChangesAsync();
+
+            return new ApiResponse
+            {
+                Result = "Password has been Successfully updated"
+            };
+
+        }
+
 
         private string CreateJwt (User user )
         {
