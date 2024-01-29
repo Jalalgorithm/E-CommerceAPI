@@ -87,7 +87,7 @@ namespace Backend.Controllers
             return new ApiResponse
             {
                 Result = result,
-                ErrorMessage = errorMessage ?? "",
+                ErrorMessage = errorMessage ?? string.Empty,
             };
 
             

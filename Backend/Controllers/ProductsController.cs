@@ -4,6 +4,7 @@ using Backend.ApiModel.Category;
 using Backend.ApiModel.Product;
 using Backend.Data;
 using Backend.Model;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -297,6 +298,7 @@ namespace Backend.Controllers
 
             
         }
+        [Authorize(Roles ="Admin")]
         [HttpPost]
         public async Task<ApiResponse> CreateProduct ([FromForm]CreateProductDto createProductDto)
         {
@@ -356,7 +358,7 @@ namespace Backend.Controllers
             };
 
         }
-
+        [Authorize(Roles ="Admin")]
         [HttpPut("{id}")]
         public async Task<ApiResponse> UpdateProduct (int id  , [FromForm]CreateProductDto createProductDto)
         {
@@ -429,7 +431,7 @@ namespace Backend.Controllers
                 Result = result
             };
         }
-
+        [Authorize(Roles ="Admin")]
         [HttpDelete("{id}")]
         public async Task<ApiResponse> DeleteProduct(int id)
         {

@@ -32,196 +32,256 @@ namespace Backend.Controllers
         [HttpPost("Register")]
         public async Task<ApiResponse> Register(UserDto userDto)
         {
-            var emailCount = await _context.Users.CountAsync(u => u.Email == userDto.Email);
-            if (emailCount > 0)
+            string errorMessage = default;
+
+            var result = default(object);
+
+            try
             {
-                return new ApiResponse
+                var emailCount = await _context.Users.CountAsync(u => u.Email == userDto.Email);
+                if (emailCount > 0)
                 {
-                    ErrorMessage = "Email already exists"
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Email already exists"
+                    };
+
+
+                }
+
+                var passwordHasher = new PasswordHasher<User>();
+
+                var encryptedPassword = passwordHasher.HashPassword(new User(), userDto.Password);
+
+                User user = new User()
+                {
+                    FirstName = userDto.FirstName,
+                    LastName = userDto.LastName,
+                    Email = userDto.Email,
+                    Password = encryptedPassword,
+                    Address = userDto.Address,
+                    Phone = userDto.Phone ?? "",
+                    Role = "Client",
+                    CreatedAt = DateTime.Now,
+
                 };
 
-               
+                await _context.Users.AddAsync(user);
+                await _context.SaveChangesAsync();
+
+                var jwt = CreateJwt(user);
+
+                var userProfileInfo = new UserProfileDto()
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email,
+                    Phone = user.Phone,
+                    Address = user.Address,
+                    Role = user.Role,
+                    CreatedAt = DateTime.Now
+                };
+
+                var responses = new 
+                {
+                    Token = jwt,
+                    Data = userProfileInfo
+                };
+
+                result = responses;
+
             }
-
-            var passwordHasher = new PasswordHasher<User>();
-
-            var encryptedPassword = passwordHasher.HashPassword(new User(), userDto.Password);
-
-            User user = new User()
+            catch (Exception ex)
             {
-                FirstName = userDto.FirstName,
-                LastName = userDto.LastName,
-                Email = userDto.Email,
-                Password = encryptedPassword,
-                Address = userDto.Address,
-                Phone = userDto.Phone ?? "",
-                Role = "Client",
-                CreatedAt = DateTime.Now,
-
-            };
-
-            await _context.Users.AddAsync(user);
-            await _context.SaveChangesAsync();
-
-            var jwt = CreateJwt(user);
-
-            var userProfileInfo = new UserProfileDto()
-            {
-                Id = user.Id,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Email = user.Email,
-                Phone = user.Phone,
-                Address = user.Address,
-                Role = user.Role,
-                CreatedAt = DateTime.Now
-            };
-
-            var responses = new
-            {
-                Token = jwt,
-                userDetails = userProfileInfo
-            };
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
 
             return new ApiResponse
             {
-                Result = responses,
+                Result = result ?? string.Empty,
+                ErrorMessage = errorMessage ?? string.Empty
             };
 
         }
+        
         [HttpPost("Login")]
         public async Task<ApiResponse>Login (string email, string password)
         {
-            var user  = await _context.Users.FirstOrDefaultAsync(u=>u.Email==email);
-            if(user is null)
-            {
-                Response.StatusCode = (int)HttpStatusCode.BadRequest;
 
-                return new ApiResponse
+            string errorMessage = default;
+            var result = default(object);
+
+            try
+            {
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+                if (user is null)
                 {
-                    ErrorMessage = "Email does not exist try signing up"
-                };
-            }
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
 
-            var passwordHasher = new PasswordHasher<User>();
-            var getPasssword = passwordHasher.VerifyHashedPassword(new User(), user.Password, password);
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Email does not exist try signing up"
+                    };
+                }
 
-            if(getPasssword ==PasswordVerificationResult.Failed)
-            {
-                Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                return new ApiResponse
+                var passwordHasher = new PasswordHasher<User>();
+                var getPasssword = passwordHasher.VerifyHashedPassword(new User(), user.Password, password);
+
+                if (getPasssword == PasswordVerificationResult.Failed)
                 {
-                    ErrorMessage = "Email or password is incorrect"
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Email or password is incorrect"
+                    };
+
+                }
+                var jwt = CreateJwt(user);
+
+                var userProfileInfo = new UserProfileDto()
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email,
+                    Phone = user.Phone,
+                    Address = user.Address,
+                    Role = user.Role,
+                    CreatedAt = DateTime.Now
                 };
 
+                var responses = new
+                {
+                    Token = jwt,
+                    userDetails = userProfileInfo
+                };
+
+                result = responses;
             }
-            var jwt = CreateJwt(user);
-
-            var userProfileInfo = new UserProfileDto()
+            catch (Exception ex)
             {
-                Id = user.Id,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Email = user.Email,
-                Phone = user.Phone,
-                Address = user.Address,
-                Role = user.Role,
-                CreatedAt = DateTime.Now
-            };
-
-            var responses = new
-            {
-                Token = jwt,
-                userDetails = userProfileInfo
-            };
-
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
+            
             return new ApiResponse
             {
-                Result = responses,
+                Result = result ?? string.Empty,
+                ErrorMessage = errorMessage ?? string.Empty
             };
 
         }
+
 
         [HttpPost("ForgotPassword")]
         public async Task<ApiResponse> ForgotPassword (string email)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            string errorMessage = default;
+            var result = default(string);
 
-            if (user is null)
+            try
             {
-                Response.StatusCode = (int) HttpStatusCode.BadRequest;
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 
-                return new ApiResponse
+                if (user is null)
                 {
-                    ErrorMessage = "Email does not exist"
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Email does not exist"
+                    };
+
+                }
+
+                var oldPasswordReset = await _context.PasswordResets.FirstOrDefaultAsync(u => u.Email == email);
+
+                if (oldPasswordReset is not null)
+                {
+                    _context.Remove(oldPasswordReset);
+                }
+
+                string token = Guid.NewGuid().ToString() + "/" + Guid.NewGuid().ToString();
+
+                var newPassword = new PasswordReset()
+                {
+                    Email = email,
+                    Token = token,
+                    CreatedAt = DateTime.Now
                 };
 
+                await _context.PasswordResets.AddAsync(newPassword);
+                await _context.SaveChangesAsync();
+
+                // send the password token as email to the user using sendgrid
+
+                result = token;
             }
-
-            var oldPasswordReset = await _context.PasswordResets.FirstOrDefaultAsync(u => u.Email == email);
-
-            if (oldPasswordReset is not null)
+            catch (Exception ex)
             {
-                _context.Remove(oldPasswordReset);
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
             }
-
-            string token =Guid.NewGuid().ToString() + "/" +Guid.NewGuid().ToString();
-
-            var newPassword = new PasswordReset()
-            {
-                Email = email,
-                Token = token,
-                CreatedAt = DateTime.Now
-            };
-
-            await _context.PasswordResets.AddAsync(newPassword);
-            await _context.SaveChangesAsync();
-
-            // send the password token as email to the user using sendgrid
 
             return new ApiResponse
             {
-
+                Result = result,
+                ErrorMessage = errorMessage ?? ""
             };
         }
 
         [HttpPost("ResetPassword")]
         public async Task<ApiResponse> ResetPassword (string token , string password)
         {
-            var passwordReset = await _context.PasswordResets.FirstOrDefaultAsync(r => r.Token == token);
+            string errorMessage = default;
 
-            if (passwordReset is null)
+
+            try
             {
-                Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                var passwordReset = await _context.PasswordResets.FirstOrDefaultAsync(r => r.Token == token);
 
-                return new ApiResponse
+                if (passwordReset is null)
                 {
-                    ErrorMessage = "Authentication not found"
-                };
-            }
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == passwordReset.Email);
-            if (user is null)
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Authentication not found"
+                    };
+                }
+
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == passwordReset.Email);
+                if (user is null)
+                {
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Email does not exist"
+                    };
+
+                }
+
+                var retrievePassword = new PasswordHasher<User>();
+                var encryptPassword = retrievePassword.HashPassword(new User(), password);
+
+                _context.PasswordResets.Remove(passwordReset);
+
+                await _context.SaveChangesAsync();
+
+            }
+            catch (Exception ex)
             {
-                Response.StatusCode = (int)HttpStatusCode.BadRequest;
-
-                return new ApiResponse
-                {
-                    ErrorMessage = "Email does not exist"
-                };
-
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage =ex.Message;
             }
-
-            var retrievePassword = new PasswordHasher<User>();
-            var encryptPassword = retrievePassword.HashPassword(new User(), password);
-
-            _context.PasswordResets.Remove(passwordReset);
-
-            await _context.SaveChangesAsync();
-
+            
             return new ApiResponse
             {
-
+                Result = "Password reset is successful",
+                ErrorMessage = errorMessage ?? ""
             };
         }
 
@@ -229,35 +289,59 @@ namespace Backend.Controllers
         [HttpGet("Profile")]
         public async Task<ApiResponse> GetProfile()
         {
-            var id = JwtReader.GetUserId(User);
 
-            var user = await _context.Users.FindAsync(id);
+            string errorMessage = default;
+            var result = default(UserProfileDto);
 
-            if(user is null)
+            try
             {
-                Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                var id = JwtReader.GetUserId(User);
 
-                return new ApiResponse
+                if (id == 0)
                 {
-                    ErrorMessage = "User details unavailable"
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Trouble Finding User"
+                    };
+                }
+
+                var user = await _context.Users.FindAsync(id);
+
+                if (user is null)
+                {
+                    Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "User details unavailable"
+                    };
+                }
+
+                var DisplayUser = new UserProfileDto()
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email,
+                    Phone = user.Phone,
+                    Address = user.Address,
+                    Role = user.Role,
+                    CreatedAt = user.CreatedAt
                 };
+
+                result = DisplayUser;
             }
-
-            var DisplayUser = new UserProfileDto()
+            catch (Exception ex)
             {
-                Id = user.Id,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Email = user.Email,
-                Phone = user.Phone,
-                Address = user.Address,
-                Role = user.Role,
-                CreatedAt = user.CreatedAt
-            };
-
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
+            
             return new ApiResponse
             {
-                Result = DisplayUser
+                Result = result,
+                ErrorMessage = errorMessage ?? ""
             };
 
         }
@@ -266,43 +350,67 @@ namespace Backend.Controllers
         [HttpPut("UpdateProfile")]
         public async Task<ApiResponse> UpdateProfile(UserProfileUpdateDto userUpdateDto)
         {
-            var id = JwtReader.GetUserId(User);
+            string errorMessage = default;
+            var result = default(UserProfileDto);
 
-            var user = await _context.Users.FindAsync(id);
-
-            if (user is null)
+            try
             {
-                Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                var id = JwtReader.GetUserId(User);
 
-                return new ApiResponse
+                if (id == 0)
                 {
-                    ErrorMessage = "User not found"
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Trouble Finding User"
+                    };
+                }
+
+                var user = await _context.Users.FindAsync(id);
+
+                if (user is null)
+                {
+                    Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "User not found"
+                    };
+                }
+
+                user.FirstName = userUpdateDto.FirstName;
+                user.LastName = userUpdateDto.LastName;
+                user.Phone = userUpdateDto.Phone ?? "";
+                user.Email = userUpdateDto.Email;
+                user.Address = userUpdateDto.Address;
+
+                await _context.SaveChangesAsync();
+
+                var DisplayUser = new UserProfileDto()
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email,
+                    Phone = user.Phone ?? "",
+                    Address = user.Address,
+                    Role = user.Role,
+                    CreatedAt = user.CreatedAt
                 };
+
+                result = DisplayUser;
             }
-
-            user.FirstName = userUpdateDto.FirstName;
-            user.LastName = userUpdateDto.LastName;
-            user.Phone = userUpdateDto.Phone ?? "";
-            user.Email = userUpdateDto.Email;
-            user.Address = userUpdateDto.Address;
-
-            await _context.SaveChangesAsync();
-
-            var DisplayUser = new UserProfileDto()
+            catch (Exception ex)
             {
-                Id = user.Id,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Email = user.Email,
-                Phone = user.Phone ?? "",
-                Address = user.Address,
-                Role = user.Role,
-                CreatedAt = user.CreatedAt
-            };
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
+            
 
             return new ApiResponse
             {
-                Result = DisplayUser
+                Result = result,
+                ErrorMessage = errorMessage ?? ""
             };
 
         }
@@ -311,30 +419,52 @@ namespace Backend.Controllers
         [HttpPut("UpdatePassword")]
         public async Task<ApiResponse> UpdatePassword([Required , MinLength(8)]string password)
         {
-            var id = JwtReader.GetUserId(User);
+            string errorMessage = default;
 
-            var user = await _context.Users.FindAsync(id);
+            var result = default(string);
 
-            if (user is null)
+            try
             {
-                Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                var id = JwtReader.GetUserId(User);
 
-                return new ApiResponse
+                if (id == 0)
                 {
-                    ErrorMessage = "User not found"
-                };
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Trouble Finding User"
+                    };
+                }
+
+                var user = await _context.Users.FindAsync(id);
+
+                if (user is null)
+                {
+                    Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "User not found"
+                    };
+                }
+
+                var passwordHasher = new PasswordHasher<User>();
+                var encryptedPassword = passwordHasher.HashPassword(new User(), password);
+
+                user.Password = encryptedPassword;
+
+                await _context.SaveChangesAsync();
             }
-
-            var passwordHasher = new PasswordHasher<User>();
-            var encryptedPassword = passwordHasher.HashPassword(new User(), password);
-
-            user.Password = encryptedPassword;
-
-            await _context.SaveChangesAsync();
-
+            catch (Exception ex)
+            {
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
+            
             return new ApiResponse
             {
-                Result = "Password has been Successfully updated"
+                Result = "Password has been Successfully updated" ,
+                ErrorMessage = errorMessage ?? ""
             };
 
         }
