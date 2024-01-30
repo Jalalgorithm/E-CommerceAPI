@@ -100,8 +100,8 @@ namespace Backend.Controllers
 
             return new ApiResponse
             {
-                Result = result ?? string.Empty,
-                ErrorMessage = errorMessage ?? string.Empty
+                Result = result,
+                ErrorMessage = errorMessage
             };
 
         }
@@ -168,8 +168,8 @@ namespace Backend.Controllers
             
             return new ApiResponse
             {
-                Result = result ?? string.Empty,
-                ErrorMessage = errorMessage ?? string.Empty
+                Result = result,
+                ErrorMessage = errorMessage
             };
 
         }
@@ -189,7 +189,8 @@ namespace Backend.Controllers
                 {
                     Response.StatusCode = (int)HttpStatusCode.BadRequest;
 
-                    return new ApiResponse
+                    return new 
+                        ApiResponse
                     {
                         ErrorMessage = "Email does not exist"
                     };
@@ -228,7 +229,7 @@ namespace Backend.Controllers
             return new ApiResponse
             {
                 Result = result,
-                ErrorMessage = errorMessage ?? ""
+                ErrorMessage = errorMessage
             };
         }
 
@@ -248,7 +249,7 @@ namespace Backend.Controllers
 
                     return new ApiResponse
                     {
-                        ErrorMessage = "Authentication not found"
+                        ErrorMessage = "Wrong or expired token"
                     };
                 }
 
@@ -259,13 +260,15 @@ namespace Backend.Controllers
 
                     return new ApiResponse
                     {
-                        ErrorMessage = "Email does not exist"
+                        ErrorMessage = "Wrong or expired token"
                     };
 
                 }
 
                 var retrievePassword = new PasswordHasher<User>();
                 var encryptPassword = retrievePassword.HashPassword(new User(), password);
+
+                user.Password = encryptPassword;
 
                 _context.PasswordResets.Remove(passwordReset);
 
@@ -281,7 +284,7 @@ namespace Backend.Controllers
             return new ApiResponse
             {
                 Result = "Password reset is successful",
-                ErrorMessage = errorMessage ?? ""
+                ErrorMessage = errorMessage
             };
         }
 
@@ -341,7 +344,7 @@ namespace Backend.Controllers
             return new ApiResponse
             {
                 Result = result,
-                ErrorMessage = errorMessage ?? ""
+                ErrorMessage = errorMessage 
             };
 
         }
@@ -410,7 +413,7 @@ namespace Backend.Controllers
             return new ApiResponse
             {
                 Result = result,
-                ErrorMessage = errorMessage ?? ""
+                ErrorMessage = errorMessage
             };
 
         }
@@ -464,7 +467,7 @@ namespace Backend.Controllers
             return new ApiResponse
             {
                 Result = "Password has been Successfully updated" ,
-                ErrorMessage = errorMessage ?? ""
+                ErrorMessage = errorMessage
             };
 
         }
