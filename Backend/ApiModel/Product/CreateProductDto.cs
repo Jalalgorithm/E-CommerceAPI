@@ -17,6 +17,8 @@ namespace Backend.ApiModel.Product
         [MaxLength(100)]
         public string Brand { get; set; } = "";
 
+        
+        public List<IFormFile> OtherImages { get; set; }
         public int CategoryId { get; set; }
     }
 }

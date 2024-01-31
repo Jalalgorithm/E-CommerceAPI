@@ -317,17 +317,46 @@ namespace Backend.Controllers
                 };
             }
 
+            if (createProductDto.OtherImages.Count ==0 )
+            {
+
+            }
+
             try
             {
                 var fileName = DateTime.Now.ToString("yyyyMMddHHmmssffff");
                 fileName += Path.GetExtension(createProductDto.Image.FileName);
 
-                string imagesFolder = _environment.WebRootPath + "/images/products/";
+                string imagesFolder = _environment.WebRootPath + "/images/products/listofimages";
 
                 using (var stream = System.IO.File.Create(imagesFolder + fileName))
                 {
                     await createProductDto.Image.CopyToAsync(stream);
                 }
+
+                foreach (var imageFileName in createProductDto.OtherImages)
+                {
+
+                    var imageName = DateTime.Now.ToString("yyyyMMddHHmmssffff");
+                    imageName += Path.GetExtension(imageFileName.FileName);
+
+
+                    using (var stream = System.IO.File.Create(imagesFolder + imageName))
+                    {
+                        await imageFileName.CopyToAsync(stream);
+                    }
+
+
+                }
+
+                //foreach (var file in createProductDto.OtherImages)
+                //{
+                //    var imageName = DateTime.Now.ToString("yyyyMMddHHmmssffff");
+                //    imageName += Path.GetExtension(file.FileName);
+
+                //    _context.
+
+                //}
 
                 var product = new Product()
                 {

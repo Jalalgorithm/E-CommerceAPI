@@ -24,6 +24,8 @@ namespace Backend.Data
                 .HasOne(p => p.Category)
                 .WithMany(c => c.Products)
                 .HasForeignKey(p => p.CategoryId);
+
+            modelBuilder.Entity<OtherImagesForProduct>().HasNoKey();
         }
     }
 
