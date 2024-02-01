@@ -317,46 +317,18 @@ namespace Backend.Controllers
                 };
             }
 
-            if (createProductDto.OtherImages.Count ==0 )
-            {
-
-            }
 
             try
             {
                 var fileName = DateTime.Now.ToString("yyyyMMddHHmmssffff");
                 fileName += Path.GetExtension(createProductDto.Image.FileName);
 
-                string imagesFolder = _environment.WebRootPath + "/images/products/listofimages";
+                string imagesFolder = _environment.WebRootPath + "/images/products";
 
                 using (var stream = System.IO.File.Create(imagesFolder + fileName))
                 {
                     await createProductDto.Image.CopyToAsync(stream);
                 }
-
-                foreach (var imageFileName in createProductDto.OtherImages)
-                {
-
-                    var imageName = DateTime.Now.ToString("yyyyMMddHHmmssffff");
-                    imageName += Path.GetExtension(imageFileName.FileName);
-
-
-                    using (var stream = System.IO.File.Create(imagesFolder + imageName))
-                    {
-                        await imageFileName.CopyToAsync(stream);
-                    }
-
-
-                }
-
-                //foreach (var file in createProductDto.OtherImages)
-                //{
-                //    var imageName = DateTime.Now.ToString("yyyyMMddHHmmssffff");
-                //    imageName += Path.GetExtension(file.FileName);
-
-                //    _context.
-
-                //}
 
                 var product = new Product()
                 {
@@ -368,6 +340,40 @@ namespace Backend.Controllers
                     QuantityInStock = createProductDto.QuantityInStock,
                     CategoryId = createProductDto.CategoryId,
                 };
+
+
+                string listofphotosfolder = _environment.WebRootPath + "/images/products/listofimages";
+
+                foreach (var imageFileName in createProductDto.OtherImages)
+                {
+                    if (createProductDto.OtherImages.Count >0)
+                    {
+                        var imageName = DateTime.Now.ToString("yyyyMMddHHmmssffff");
+                        imageName += Path.GetExtension(imageFileName.FileName);
+
+
+                        using (var stream = System.IO.File.Create(listofphotosfolder + imageName))
+                        {
+                            await imageFileName.CopyToAsync(stream);
+                        }
+
+                        var images = new ProductImage()
+                        {
+                            FilePath = imageName
+                        };
+
+                        product.Otherimages.Add(images);
+                        
+
+
+                    }
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Kindly input an image"
+                    };
+
+                }
                 _context.Products.Add(product);
                 _context.SaveChanges();
 
@@ -443,6 +449,38 @@ namespace Backend.Controllers
                 product.Brand = createProductDto.Brand;
                 product.DisplayImage = fileName;
                 product.CategoryId = createProductDto.CategoryId;
+
+                var photos = product.Otherimages.ToList();
+
+                string listofphotosfolder = _environment.WebRootPath + "/images/products/listofimages";
+
+                foreach (var imageName in createProductDto.OtherImages)
+                {
+                    if (createProductDto.OtherImages.Count >0)
+                    {
+                        var imagePath = DateTime.Now.ToString("yyyyMMddHHmmssffff");
+                        imagePath += Path.GetExtension(imageName.FileName);
+
+                        using(var stream = System.IO.File.Create (listofphotosfolder+ imagePath))
+                        {
+                            await imageName.CopyToAsync(stream);
+                        }
+
+                        foreach (var photo in photos)
+                        {
+                            System.IO.File.Delete(listofphotosfolder + photo);
+                            product.Otherimages.Remove(photo);
+                        }
+
+                        var newImage = new ProductImage()
+                        {
+                            FilePath = imagePath,
+                        };
+
+                        product.Otherimages.Add(newImage);
+
+                    }
+                }
 
                 _context.SaveChanges();
 
