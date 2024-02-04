@@ -13,5 +13,6 @@ namespace Backend.ApiModel.Product
         public string Brand { get; set; }
 
         public string CategoryName { get; set; }
+        public List<string> Images { get; set; }
     }
 }
