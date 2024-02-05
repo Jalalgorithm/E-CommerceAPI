@@ -330,7 +330,7 @@ namespace Backend.Controllers
 
 
 
-                string imagesFolder = _environment.WebRootPath + "/images/products";
+                string imagesFolder = _environment.WebRootPath + "/images/products/";
 
                 using (var stream = System.IO.File.Create(imagesFolder + fileName))
                 {
@@ -339,7 +339,7 @@ namespace Backend.Controllers
 
 
 
-                string listofphotosfolder = _environment.WebRootPath + "/images/products/listofimages";
+                string listofphotosfolder = _environment.WebRootPath + "/images/products/listofimages/";
                 var TakeImage = new List<ProductImage>();
                 foreach (var imageFileName in createProductDto.OtherImages)
                 {
@@ -550,7 +550,7 @@ namespace Backend.Controllers
                 string imagesFolder = _environment.WebRootPath + "/images/products";
                 System.IO.File.Delete(imagesFolder + product.DisplayImage);
 
-                string listofphotosfolder = _environment.WebRootPath + "/images/products/listofimages";
+                string listofphotosfolder = _environment.WebRootPath + "/images/products/listofimages/";
 
                 var photos = product.Otherimages.Select(image=>image.FilePath).ToList();
                 product.Otherimages.Clear();
