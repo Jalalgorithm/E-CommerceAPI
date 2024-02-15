@@ -1,4 +1,4 @@
-﻿namespace Backend.ApiModel.Product
+﻿namespace Backend.ApiModel.Products
 {
     public class GetImages
     {

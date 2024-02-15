@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
-namespace Backend.ApiModel.Product
+namespace Backend.ApiModel.Products
 {
     public class CreateProductDto
     {
@@ -17,7 +17,7 @@ namespace Backend.ApiModel.Product
         [MaxLength(100)]
         public string Brand { get; set; } = "";
 
-        
+
         public List<IFormFile> OtherImages { get; set; }
         public int CategoryId { get; set; }
     }

@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using Backend.ApiModel.Base;
 using Backend.ApiModel.Category;
-using Backend.ApiModel.Product;
+using Backend.ApiModel.Products;
 using Backend.Data;
 using Backend.Model;
 using Microsoft.AspNetCore.Authorization;

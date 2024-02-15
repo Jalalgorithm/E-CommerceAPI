@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Backend.ApiModel.Product
+namespace Backend.ApiModel.Products
 {
     public class GetProductDto
     {
