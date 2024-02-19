@@ -73,7 +73,7 @@ namespace Backend.Controllers
 
         }
         [HttpGet]
-        public async Task<ApiResponse> GetProducts(string? search ,string? category , int? minPrice , int? maxPrice ,
+        public async Task<ApiResponse> GetProducts(string? search ,string? category , int? categoryId ,  int? minPrice , int? maxPrice ,
             string? sort , string? order, int? page)
         {
 
@@ -103,6 +103,10 @@ namespace Backend.Controllers
                 if (category is not null)
                 {
                     query = query.Where(p => p.Category.Name.ToLower() == category.ToLower());
+                }
+                if(categoryId is not null)
+                {
+                    query = query.Where(p => p.CategoryId == categoryId);
                 }
 
                 if (minPrice is not null)
@@ -403,7 +407,7 @@ namespace Backend.Controllers
             };
 
         }
-        [Authorize(Roles ="Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<ApiResponse> UpdateProduct (int id  , [FromForm]CreateProductDto createProductDto)
         {
@@ -422,7 +426,9 @@ namespace Backend.Controllers
 
             try
             {
-                var product = _context.Products.Find(id);
+                var product = await _context.Products
+                    .Include(po => po.Otherimages)
+                    .FirstOrDefaultAsync(p => p.Id == id);
 
                 if (product is null)
                 {
@@ -460,13 +466,28 @@ namespace Backend.Controllers
                 product.DisplayImage = fileName;
                 product.CategoryId = createProductDto.CategoryId;
 
-                var photos = product.Otherimages.Select(image=>image.FilePath).ToList();
+                string listofphotosfolder = _environment.WebRootPath + "/images/products/listofimages/";
+
+
+                foreach (var image in product.Otherimages)
+                {
+                    if (!string.IsNullOrEmpty(image.FilePath))
+                    {
+                        string path = listofphotosfolder + image.FilePath;
+                        if (System.IO.File.Exists(path))
+                        {
+                            System.IO.File.Delete(path);
+                        }
+                    }
+
+                }
 
                 product.Otherimages.Clear();
-                string listofphotosfolder = _environment.WebRootPath + "/images/products/listofimages/";
+
 
                 foreach (var imageName in createProductDto.OtherImages)
                 {
+                   
                     if (createProductDto.OtherImages.Count <=0 && createProductDto.OtherImages.IsNullOrEmpty() )
                     {
                         return new ApiResponse
@@ -482,12 +503,6 @@ namespace Backend.Controllers
                     {
                         await imageName.CopyToAsync(stream);
                     }
-
-                    foreach (var photo in photos)
-                    {
-                        System.IO.File.Delete(listofphotosfolder + photo);
-                    }
-
 
                     var newImage = new ProductImage()
                     {
@@ -547,7 +562,7 @@ namespace Backend.Controllers
                     };
                 }
 
-                string imagesFolder = _environment.WebRootPath + "/images/products";
+                string imagesFolder = _environment.WebRootPath + "/images/products/";
                 System.IO.File.Delete(imagesFolder + product.DisplayImage);
 
                 string listofphotosfolder = _environment.WebRootPath + "/images/products/listofimages/";

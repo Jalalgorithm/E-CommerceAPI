@@ -16,6 +16,8 @@ namespace Backend.Data
         public DbSet<User> Users { get; set; }
         public DbSet<PasswordReset> PasswordResets { get; set; }
         public DbSet<ProductImage> ProductImages { get; set; }
+        public DbSet<OrderItem> OrderItems { get; set; }
+        public DbSet<Order> Orders { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
