@@ -80,7 +80,7 @@ namespace Backend.Controllers
                     Phone = user.Phone,
                     Address = user.Address,
                     Role = user.Role,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = user.CreatedAt
                 };
 
                 var responses = new 

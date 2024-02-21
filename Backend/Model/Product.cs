@@ -18,7 +18,9 @@ namespace Backend.Model
         [MaxLength(100)]
         public string Brand { get; set; } = "";
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
         public List<ProductImage> Otherimages { get; set; }
+        public List<Review> Reviews { get; set; }
 
         public int CategoryId { get; set; }
         public Category Category { get; set; }
