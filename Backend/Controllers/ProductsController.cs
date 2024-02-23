@@ -21,11 +21,13 @@ namespace Backend.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _environment;
+        private readonly ImageHandler _imageHandler;
 
-        public ProductsController(ApplicationDbContext context , IWebHostEnvironment environment)
+        public ProductsController(ApplicationDbContext context , IWebHostEnvironment environment , ImageHandler imageHandler)
         {
             _context = context;
             _environment = environment;
+            _imageHandler = imageHandler;
         }
 
         [HttpGet("categories")]
@@ -329,61 +331,36 @@ namespace Backend.Controllers
 
             try
             {
-                var fileName = DateTime.Now.ToString("yyyyMMddHHmmssffff");
-                fileName += Path.GetExtension(createProductDto.Image.FileName);
+                var imageurl = _imageHandler.UploadImage(createProductDto.Image);
+                var otherImagesUrl = _imageHandler.UploadManyImages(createProductDto.OtherImages);
 
-
-
-                string imagesFolder = _environment.WebRootPath + "/images/products/";
-
-                using (var stream = System.IO.File.Create(imagesFolder + fileName))
+                if(string.IsNullOrEmpty(imageurl))
                 {
-                    await createProductDto.Image.CopyToAsync(stream);
-                }
-
-
-
-                string listofphotosfolder = _environment.WebRootPath + "/images/products/listofimages/";
-                var TakeImage = new List<ProductImage>();
-                foreach (var imageFileName in createProductDto.OtherImages)
-                {
-                    if (createProductDto.OtherImages.Count<=0 && createProductDto.OtherImages.IsNullOrEmpty())
+                    return new ApiResponse
                     {
-                        return new ApiResponse
-                        {
-                            ErrorMessage = "Kindly input an image"
-                        };
-                    }
-
-                    var imageName = Guid.NewGuid().ToString();
-                    imageName += Path.GetExtension(imageFileName.FileName);
-
-
-                    using (var stream = System.IO.File.Create(listofphotosfolder + imageName))
-                    {
-                        await imageFileName.CopyToAsync(stream);
-                    }
-
-                    var images = new ProductImage()
-                    {
-                        FilePath = imageName
+                        ErrorMessage = "Couldnt upload image"
                     };
-
-                    TakeImage.Add(images);
-
                 }
 
+                var prodImages = new List<ProductImage>();
+
+                foreach (var image in otherImagesUrl)
+                {
+                    var imageUrl = new ProductImage();
+                    imageUrl.FilePath = image;
+                    prodImages.Add(imageUrl);
+                }
 
                 var product = new Product()
                 {
                     Name = createProductDto.Name,
                     Description = createProductDto.Description ?? "",
                     Brand = createProductDto.Brand,
-                    DisplayImage = fileName,
+                    DisplayImage = imageurl,
                     Price = createProductDto.Price,
                     QuantityInStock = createProductDto.QuantityInStock,
                     CategoryId = createProductDto.CategoryId,
-                    Otherimages = TakeImage.ToList(),
+                    Otherimages = prodImages.ToList(),
                 };
 
 
@@ -441,77 +418,44 @@ namespace Backend.Controllers
                 }
 
                 string fileName = product.DisplayImage;
+                _imageHandler.DeleteAnImage(fileName);
 
-                if (createProductDto.Image != null)
-                {
-                    fileName = DateTime.Now.ToString("yyyyMMddHHmmssffff");
-                    fileName += Path.GetExtension(createProductDto.Image.FileName);
-
-                    string imagesFolder = _environment.WebRootPath + "/images/products/";
-
-                    using (var stream = System.IO.File.Create(imagesFolder + fileName))
-                    {
-                        await createProductDto.Image.CopyToAsync(stream);
-                    }
+                var newFile = _imageHandler.UploadImage(createProductDto.Image);
 
 
-                    System.IO.File.Delete(imagesFolder + product.DisplayImage);
-                }
 
                 product.Name = createProductDto.Name;
                 product.Description = createProductDto.Description ?? "";
                 product.QuantityInStock = createProductDto.QuantityInStock;
                 product.Price = createProductDto.Price;
                 product.Brand = createProductDto.Brand;
-                product.DisplayImage = fileName;
+                product.DisplayImage = newFile;
                 product.CategoryId = createProductDto.CategoryId;
 
-                string listofphotosfolder = _environment.WebRootPath + "/images/products/listofimages/";
+                var oldImages = product.Otherimages.Select(images => images.FilePath).ToList();
 
+                _imageHandler.DeleteManyImages(oldImages);
 
-                foreach (var image in product.Otherimages)
+                foreach ( var image in product.Otherimages )
                 {
-                    if (!string.IsNullOrEmpty(image.FilePath))
-                    {
-                        string path = listofphotosfolder + image.FilePath;
-                        if (System.IO.File.Exists(path))
-                        {
-                            System.IO.File.Delete(path);
-                        }
-                    }
-
+                    product.Otherimages.Remove(image);
                 }
 
-                product.Otherimages.Clear();
+                var newImages = _imageHandler.UploadManyImages(createProductDto.OtherImages);
 
+                var productImages = new List<ProductImage>();
 
-                foreach (var imageName in createProductDto.OtherImages)
+                foreach( var image in newImages )
                 {
-                   
-                    if (createProductDto.OtherImages.Count <=0 && createProductDto.OtherImages.IsNullOrEmpty() )
-                    {
-                        return new ApiResponse
-                        {
-                            ErrorMessage = "Kindly add a picture"
-                        };
-                    }
+                    var imageUrls = new ProductImage();
+                    imageUrls.FilePath = image;
+                    productImages.Add(imageUrls);
+                }
 
-                    var imagePath = Guid.NewGuid().ToString();
-                    imagePath += Path.GetExtension(imageName.FileName);
 
-                    using (var stream = System.IO.File.Create(listofphotosfolder + imagePath))
-                    {
-                        await imageName.CopyToAsync(stream);
-                    }
 
-                    var newImage = new ProductImage()
-                    {
-                        FilePath = imagePath,
-                    };
-
-                    product.Otherimages.Add(newImage);
+                product.Otherimages = productImages;
                   
-                }
                 _context.SaveChanges();
 
                 result = "Product has been successfully updated";
@@ -562,21 +506,21 @@ namespace Backend.Controllers
                     };
                 }
 
-                string imagesFolder = _environment.WebRootPath + "/images/products/";
-                System.IO.File.Delete(imagesFolder + product.DisplayImage);
-
-                string listofphotosfolder = _environment.WebRootPath + "/images/products/listofimages/";
+                var imagesinDb = product.Otherimages.ToList();
+                _imageHandler.DeleteAnImage(product.DisplayImage);
 
                 var photos = product.Otherimages.Select(image=>image.FilePath).ToList();
-                product.Otherimages.Clear();
+
+                _imageHandler.DeleteManyImages(photos);
 
 
-                foreach (var image in photos)
+
+                foreach (var image in imagesinDb)
                 {
-                    System.IO.File.Delete(listofphotosfolder + image);
+                    _imageHandler.DeleteAnImage(image.FilePath);
                 }
 
-
+                _context.ProductImages.RemoveRange(product.Otherimages);
                 _context.Products.Remove(product);
                 _context.SaveChanges();
 

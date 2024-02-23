@@ -2,6 +2,7 @@
 using Backend.ApiModel.User;
 using Backend.Data;
 using Backend.Model;
+using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -138,6 +139,7 @@ namespace Backend.Controllers
                     };
 
                 }
+
                 var jwt = CreateJwt(user);
 
                 var userProfileInfo = new UserProfileDto()
