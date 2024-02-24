@@ -20,14 +20,14 @@ namespace Backend.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-        private readonly IWebHostEnvironment _environment;
         private readonly ImageHandler _imageHandler;
+        private readonly ILogger _logger;
 
-        public ProductsController(ApplicationDbContext context , IWebHostEnvironment environment , ImageHandler imageHandler)
+        public ProductsController(ApplicationDbContext context  , ImageHandler imageHandler, ILogger logger)
         {
             _context = context;
-            _environment = environment;
             _imageHandler = imageHandler;
+            _logger = logger;
         }
 
         [HttpGet("categories")]
@@ -73,6 +73,60 @@ namespace Backend.Controllers
            
 
 
+        }
+
+        [HttpGet("GetProductByCategoriesId{categoryId}")]
+        public async Task<ApiResponse> GetProductByCategoryId (int categoryId)
+        {
+
+            string errorMessage = default;
+
+            var result = default(ICollection<GetProductDtoList>);
+
+            try
+            {
+                var product = await _context.Products
+               .Include(c => c.Category)
+               .Where(p => p.CategoryId == categoryId)
+               .Select(mainProduct => new GetProductDtoList
+               {
+                   Id = mainProduct.Id,
+                   Name = mainProduct.Name,
+                   Description = mainProduct.Description,
+                   Brand = mainProduct.Brand,
+                   Price = mainProduct.Price,
+                   DisplayImage = mainProduct.DisplayImage,
+                   CategoryName = mainProduct.Category.Name,
+                   QuantityInStock = mainProduct.QuantityInStock,
+               })
+               .ToListAsync();
+
+
+                if (product is null)
+                {
+                    Response.StatusCode = (int)HttpStatusCode.NotFound;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "No product exist in current category"
+                    };
+                }
+
+                result = product;
+
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
+
+           
+            return new ApiResponse
+            {
+                Result = result,
+                ErrorMessage = errorMessage
+            };
         }
         [HttpGet]
         public async Task<ApiResponse> GetProducts(string? search ,string? category , int? categoryId ,  int? minPrice , int? maxPrice ,
@@ -209,7 +263,7 @@ namespace Backend.Controllers
 
 
                 var products = await query
-                    .Select(product => new GetProductDto
+                    .Select(product => new GetProductDtoList
                     {
                         Id = product.Id,
                         Name = product.Name,
@@ -236,6 +290,8 @@ namespace Backend.Controllers
             {
                 Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 errorMessage = ex.Message;
+
+                _logger.LogError(ex, "Unhandled exception occurred");
             }
 
             return new ApiResponse
@@ -418,9 +474,29 @@ namespace Backend.Controllers
                 }
 
                 string fileName = product.DisplayImage;
-                _imageHandler.DeleteAnImage(fileName);
+                var response  = _imageHandler.DeleteAnImage(fileName);
+
+                if (!response)
+                {
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Couldnt delete image"
+                    };
+                }
 
                 var newFile = _imageHandler.UploadImage(createProductDto.Image);
+
+                if (string.IsNullOrEmpty(newFile))
+                {
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Couldnt upload image"
+                    };
+                }
 
 
 
@@ -432,14 +508,15 @@ namespace Backend.Controllers
                 product.DisplayImage = newFile;
                 product.CategoryId = createProductDto.CategoryId;
 
-                var oldImages = product.Otherimages.Select(images => images.FilePath).ToList();
+                var oldImages = product.Otherimages.ToList();
 
-                _imageHandler.DeleteManyImages(oldImages);
 
-                foreach ( var image in product.Otherimages )
+                foreach ( var image in oldImages )
                 {
-                    product.Otherimages.Remove(image);
+                    _imageHandler.DeleteAnImage(image.FilePath);
                 }
+
+                _context.ProductImages.RemoveRange(product.Otherimages);
 
                 var newImages = _imageHandler.UploadManyImages(createProductDto.OtherImages);
 
@@ -465,6 +542,8 @@ namespace Backend.Controllers
             {
                 Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 errorMessage = ex.Message;
+
+                _logger.LogError(ex, "Unhandled Exception occurred");
             }
             return new ApiResponse
             {
@@ -494,6 +573,7 @@ namespace Backend.Controllers
 
                 var product = await _context.Products
                     .Include(p=>p.Otherimages)
+                    .Include(r=>r.Reviews)
                     .FirstOrDefaultAsync(x=>x.Id  == id);
 
                 if (product == null)
@@ -507,22 +587,28 @@ namespace Backend.Controllers
                 }
 
                 var imagesinDb = product.Otherimages.ToList();
-                _imageHandler.DeleteAnImage(product.DisplayImage);
+                var response = _imageHandler.DeleteAnImage(product.DisplayImage);
 
-                var photos = product.Otherimages.Select(image=>image.FilePath).ToList();
+                if (response == false)
+                {
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
 
-                _imageHandler.DeleteManyImages(photos);
-
-
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "image couldnt be deleted"
+                    };
+                }
 
                 foreach (var image in imagesinDb)
                 {
                     _imageHandler.DeleteAnImage(image.FilePath);
                 }
 
+
+
                 _context.ProductImages.RemoveRange(product.Otherimages);
                 _context.Products.Remove(product);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
                 result = "Product deleted successfully";
 
@@ -531,6 +617,7 @@ namespace Backend.Controllers
             {
                 Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 errorMessage = ex.Message;
+                _logger.LogError(ex, "Unhandled exceptioon occured");
             }
 
             return new ApiResponse

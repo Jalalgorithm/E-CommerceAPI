@@ -27,61 +27,169 @@ namespace Backend.Controllers
         [HttpPost("Add-thumbnail")]
         public async Task<ApiResponse> AddImage(List<IFormFile> pictures)
         {
-            if (pictures.Count<1)
-            {
-                Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            string errorMessage = default;
+            var result = default(string);
 
-                return new ApiResponse
+            try
+            {
+                if (pictures.Count < 1)
                 {
-                    ErrorMessage = "Kindly add an image"
-                };
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Kindly add an image"
+                    };
 
 
+                }
+
+                var imagesPath = _imageHandler.UploadManyImages(pictures);
+
+
+                foreach (var image in imagesPath)
+                {
+                    var imageUrl = new ThumbnailPicture();
+                    imageUrl.Path = image;
+                    await _context.ThumbnailPictures.AddAsync(imageUrl);
+                    await _context.SaveChangesAsync();
+                }
+
+                result = "Image upload successful";
             }
-
-            var imagesPath = _imageHandler.UploadManyImages(pictures);
-
-
-            foreach (var image in imagesPath)
+            catch (Exception ex)
             {
-                var imageUrl = new ThumbnailPicture();
-                imageUrl.Path = image;
-                await _context.ThumbnailPictures.AddAsync(imageUrl);
-                await _context.SaveChangesAsync();
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message; 
             }
-
-
-
 
             return new ApiResponse
             {
-                Result = "All images successfully uploaded"
+                Result = result,
+                ErrorMessage = errorMessage
             };
         }
 
         [HttpGet("AllImages")]
         public async Task<ApiResponse> GetImages ()
         {
-            var images =  _context.ThumbnailPictures
-                .Select(image => new GetThumbnailDto
-                {
-                    Path = image.Path,
-                }).ToList();
+            string errorMessage = default;
 
-            if (images.Count < 1)
+            var result = default(List<GetThumbnailDto>);
+
+            try
             {
-                Response.StatusCode = (int)HttpStatusCode.NotFound;
+                var images = _context.ThumbnailPictures
+               .Select(image => new GetThumbnailDto
+               {
+                   Path = image.Path,
+               }).ToList();
 
-                return new ApiResponse
+                if (images.Count < 1)
                 {
-                    ErrorMessage = "no image found"
-                };
+                    Response.StatusCode = (int)HttpStatusCode.NotFound;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "no image found"
+                    };
+                }
+
+                result = images;
             }
+            catch (Exception ex)
+            {
+                Response.StatusCode= (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
+           
+            return new ApiResponse
+            {
+                Result = result,
+                ErrorMessage = errorMessage
+            };
+        }
+
+        [Authorize(Roles ="Admin")]
+        [HttpPut("Update-Thumbnail")]
+        public async Task<ApiResponse> UpdateThumbnail (List<IFormFile> welcomePictures)
+        {
+            string errorMessage = default;
+            var result = default(string);
+
+            try
+            {
+                var images = _context.ThumbnailPictures.ToList();
+
+                foreach (var image in images)
+                {
+                    _imageHandler.DeleteAnImage(image.Path);
+                }
+
+                _context.ThumbnailPictures.RemoveRange(images);
+
+                var newImagesUrl = _imageHandler.UploadManyImages(welcomePictures);
+
+                foreach (var image in newImagesUrl)
+                {
+                    var picture = new ThumbnailPicture();
+                    picture.Path = image;
+                    await _context.ThumbnailPictures.AddAsync(picture);
+
+                }
+
+                await _context.SaveChangesAsync();
+
+                result = "Pictures updated successfully";
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
+            
 
             return new ApiResponse
             {
-                Result = images
+                Result = result,
+                ErrorMessage = errorMessage
+            };
+
+        }
+
+        [Authorize(Roles ="Admin")]
+        [HttpDelete("Delete-Thumbnail")]
+        public async Task<ApiResponse> DeleteThumbnail()
+        {
+            string errorMessage = default;
+            var result = default(string);
+
+            try
+            {
+                var pictures = _context.ThumbnailPictures.ToList();
+
+                foreach (var image in pictures)
+                {
+                    _imageHandler.DeleteAnImage(image.Path);
+                }
+
+                _context.ThumbnailPictures.RemoveRange(pictures);
+                await _context.SaveChangesAsync();
+
+                result = "Thumbnails deleted";
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
+            return new ApiResponse
+            {
+                Result = result,
+                ErrorMessage = errorMessage
             };
         }
+
+
     }
 }

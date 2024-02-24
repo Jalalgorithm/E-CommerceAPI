@@ -86,7 +86,17 @@ namespace Backend.Data
 
         public bool DeleteAnImage (string FileName)
         {
-            var deleteFile = new DeletionParams(FileName);
+            var publicId = GetPublicIdFromImageUrl(FileName);
+
+            if (publicId is null)
+            {
+                return false;
+            }
+
+            var deleteFile = new DeletionParams(publicId)
+            {
+                ResourceType = ResourceType.Image
+            };
 
             var deleteResult = _cloudinary.Destroy(deleteFile);
 
@@ -127,6 +137,13 @@ namespace Backend.Data
             }
 
            return result;
+        }
+
+        private string GetPublicIdFromImageUrl(string imageUrl)
+        {
+            var url = new Uri(imageUrl);
+
+            return Path.GetFileNameWithoutExtension(url.Segments.Last());
         }
         
     }

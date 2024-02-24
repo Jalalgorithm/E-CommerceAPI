@@ -24,43 +24,81 @@ namespace Backend.Controllers
         [HttpPost("AddReview/{productId}")]
         public async Task<ApiResponse> AddReview(int productId, [FromBody] ReviewAddDto reviewAdd)
         {
-            var review = new Review()
+            string errorMessage = default;
+            var result = string.Empty;
+
+            try
             {
-                Comment = reviewAdd.Comment,
-                Email = reviewAdd.Email,
-                ProductId = productId,
-                Rating = reviewAdd.Rating
-            };
+                var review = new Review()
+                {
+                    Comment = reviewAdd.Comment,
+                    Email = reviewAdd.Email,
+                    ProductId = productId,
+                    Rating = reviewAdd.Rating
+                };
 
-            await _context.Reviews.AddAsync(review);
-            await _context.SaveChangesAsync();
+                await _context.Reviews.AddAsync(review);
+                await _context.SaveChangesAsync();
 
+                result = "Review Added";
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+                
+            }
             return new ApiResponse
             {
-
+                Result = result,
+                ErrorMessage = errorMessage
             };
         }
 
         [HttpGet("GetReview/{productId}")]
         public async Task<ApiResponse> GetReviewForAProduct(int productId)
         {
-            var reviews = await _context.Reviews.Where(r => r.ProductId == productId).ToListAsync();
-
-            if (reviews == null)
+            string errorMessage = default;
+            var result = default(List<ReviewGetDto>);
+            try
             {
-                Response.StatusCode = (int)HttpStatusCode.NotFound;
+                var reviews = await _context.Reviews
+               .Where(r => r.ProductId == productId)
+               .Select(review => new ReviewGetDto
+               {
+                   Comment = review.Comment,
+                   Id = review.Id,
+                   Email = review.Email,
+                   Rating = review.Rating,
+                   ProductName = review.Product.Name
+               })
+               .ToListAsync();
 
-                return new ApiResponse
+                if (reviews == null)
                 {
-                    ErrorMessage = "no review available for this product"
-                };
+                    Response.StatusCode = (int)HttpStatusCode.NotFound;
 
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "no review available for this product"
+                    };
+
+
+                }
+
+                result = reviews;
 
             }
-
+            catch (Exception ex)
+            {
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
+           
             return new ApiResponse
             {
-                Result = reviews
+                Result = result,
+                ErrorMessage = errorMessage
             };
         }
 
@@ -68,26 +106,82 @@ namespace Backend.Controllers
         [HttpGet("average-rating/{productId}")]
         public async Task<ApiResponse> GetAverageRatingForProduct(int productId)
         {
-            var productReviews = await _context.Reviews.Where(r=>r.ProductId==productId).ToListAsync();
+            string errorMessage = default;
+            var result = default(double);
 
-            if(productReviews == null || productReviews.Count <=0)
+            try
             {
-                Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                var productReviews = await _context.Reviews.Where(r => r.ProductId == productId).ToListAsync();
 
-                return new ApiResponse
+                if (productReviews == null || productReviews.Count <= 0)
                 {
-                    ErrorMessage = "product review not found"
-                };
-            }
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
 
-            double totalRating = (double)productReviews.Sum(r => r.Rating);
-            double averageRating = totalRating / productReviews.Count;
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "product review not found"
+                    };
+                }
+
+                double totalRating = (double)productReviews.Sum(r => r.Rating);
+                double averageRating = totalRating / productReviews.Count;
+
+                result = averageRating;
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
+            
 
             return new ApiResponse
             {
-                Result = averageRating
+                Result = result,
+                ErrorMessage = errorMessage
             };
 
+        }
+
+        [Authorize(Roles ="Admin")]
+        [HttpDelete("DeleteReview{id}")]
+        public async Task<ApiResponse> DeleteReview (int id)
+        {
+            string errorMessage = default;
+
+            var result = default(string);
+
+            try
+            {
+                var productReview = await _context.Reviews.FindAsync(id);
+
+                if (productReview is null)
+                {
+                    Response.StatusCode = (int)HttpStatusCode.NotFound;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "This review doesnt not exist for this program"
+                    };
+                }
+
+                _context.Reviews.Remove(productReview);
+                await _context.SaveChangesAsync();
+
+                result = "Review Deleted";
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
+           
+
+            return new ApiResponse
+            {
+                Result = result,
+                ErrorMessage = errorMessage
+            };
         }
 
     }
