@@ -52,8 +52,9 @@ namespace Backend.Controllers
                     var imageUrl = new ThumbnailPicture();
                     imageUrl.Path = image;
                     await _context.ThumbnailPictures.AddAsync(imageUrl);
-                    await _context.SaveChangesAsync();
                 }
+
+                await _context.SaveChangesAsync();
 
                 result = "Image upload successful";
             }

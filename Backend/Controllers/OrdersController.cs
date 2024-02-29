@@ -75,7 +75,7 @@ namespace Backend.Controllers
             var response = new
             {
                 Orders = orders,
-                totalPages = totalPages,
+                TotalPages = totalPages,
                 Page = page,
                 PageSize = pageSize
             };
@@ -87,7 +87,7 @@ namespace Backend.Controllers
         }
 
         [Authorize]
-        [HttpGet("{UniqueId}")]
+        [HttpGet("{uniqueId}")]
         public async Task<ApiResponse> GetOrderByUniqueId(string uniqueId)
         {
             var userId = JwtReader.GetUserId(User);
@@ -162,11 +162,11 @@ namespace Backend.Controllers
                     ErrorMessage = "Error finding user"
                 };
             }
-            var newOrderId = "ORD" +  GenerateUniqueAlphanumericId();
+            var newOrderId =  GenerateUniqueAlphanumericId();
 
             while(await _context.Orders.AnyAsync(o=>o.UniqueOrderId == newOrderId)) 
             {
-                newOrderId = "ORD" + GenerateUniqueAlphanumericId();
+                newOrderId =  GenerateUniqueAlphanumericId();
             }
 
             var productDictionary = OrderHelper.GetProductDictionary(orderDto.ProductIdentifiers);
@@ -216,6 +216,8 @@ namespace Backend.Controllers
                     ErrorMessage = "Unable to create order"
                 };
             }
+
+            
             await _context.Orders.AddAsync(order);
             await _context.SaveChangesAsync();
 
@@ -323,13 +325,101 @@ namespace Backend.Controllers
                 Result = "Order has been deleted successfully"
             };
         }
+
+        [Authorize]
+        [HttpPost("process/{orderUniqueId}")]
+        public async Task<ApiResponse> ProcessOrderPayment(string orderUniqueId)
+        {
+
+            var userId = JwtReader.GetUserId(User);
+            if (userId <= 0)
+            {
+                Response.StatusCode = (int)HttpStatusCode.NotFound;
+
+                return new ApiResponse
+                {
+                    ErrorMessage = "kindly log in"
+                };
+
+            }
+
+            //Order? order = null;
+            var order = await _context.Orders
+                    .Include(oi => oi.OrderItems)
+                    .ThenInclude(p => p.Product)
+                    .FirstOrDefaultAsync(uid => uid.UniqueOrderId.ToLower() == orderUniqueId.ToLower() && uid.UserId == userId);
+
+            if (order is null)
+            {
+                Response.StatusCode = (int)HttpStatusCode.NotFound;
+
+                return new ApiResponse
+                {
+                    ErrorMessage = "no order found"
+                };
+
+            }
+
+           
+           // var orderItems = _context.OrderItems.Where(oi=>oi.OrderId == order.Id).ToList();
+
+            decimal totalPrice =  order.OrderItems.Sum(item => item.UnitPrice * item.Quantity);
+
+            if (order.PaymentStatus.ToLower() == "accepted")
+            {
+                Response.StatusCode = (int)HttpStatusCode.BadRequest;
+
+                return new ApiResponse
+                {
+                    ErrorMessage = "order has already been paid"
+                };
+            }
+
+            foreach (var item in order.OrderItems)
+            {
+
+                if (item.Product.QuantityInStock < item.Quantity)
+                {
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Not enough quantity available for product"
+                    };
+                }
+            }
+            
+
+
+
+                //process payment here
+
+
+                order.PaymentStatus = OrderHelper.PaymentStatuses[1];
+
+
+            foreach (var item in order.OrderItems)
+            {
+                item.Product.QuantityInStock -=item.Quantity;
+                _context.Entry(item).State = EntityState.Modified; 
+            }
+
+
+            await _context.SaveChangesAsync();
+
+            return new ApiResponse
+            {
+                Result = "Payment Successful"
+            };
+        }
+
         
 
         private string GenerateUniqueAlphanumericId()
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             var random = new Random();
-            return new  string(Enumerable.Repeat(chars , 5).Select(s => s[random.Next(s.Length)]).ToArray());
+            return new  string(Enumerable.Repeat(chars , 9).Select(s => s[random.Next(s.Length)]).ToArray());
         }
     }
 }

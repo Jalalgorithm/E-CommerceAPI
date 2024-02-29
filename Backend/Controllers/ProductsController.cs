@@ -21,13 +21,11 @@ namespace Backend.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ImageHandler _imageHandler;
-        private readonly ILogger _logger;
 
-        public ProductsController(ApplicationDbContext context  , ImageHandler imageHandler, ILogger logger)
+        public ProductsController(ApplicationDbContext context  , ImageHandler imageHandler)
         {
             _context = context;
             _imageHandler = imageHandler;
-            _logger = logger;
         }
 
         [HttpGet("categories")]
@@ -75,7 +73,7 @@ namespace Backend.Controllers
 
         }
 
-        [HttpGet("GetProductByCategoriesId{categoryId}")]
+        [HttpGet("GetProductByCategoriesId/{categoryId}")]
         public async Task<ApiResponse> GetProductByCategoryId (int categoryId)
         {
 
@@ -291,7 +289,6 @@ namespace Backend.Controllers
                 Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 errorMessage = ex.Message;
 
-                _logger.LogError(ex, "Unhandled exception occurred");
             }
 
             return new ApiResponse
@@ -419,6 +416,7 @@ namespace Backend.Controllers
                     Otherimages = prodImages.ToList(),
                 };
 
+                
 
                 _context.Products.Add(product);
                 _context.SaveChanges();
@@ -543,7 +541,6 @@ namespace Backend.Controllers
                 Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 errorMessage = ex.Message;
 
-                _logger.LogError(ex, "Unhandled Exception occurred");
             }
             return new ApiResponse
             {
@@ -617,7 +614,6 @@ namespace Backend.Controllers
             {
                 Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 errorMessage = ex.Message;
-                _logger.LogError(ex, "Unhandled exceptioon occured");
             }
 
             return new ApiResponse

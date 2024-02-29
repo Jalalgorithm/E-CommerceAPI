@@ -27,7 +27,9 @@ namespace Backend.Controllers
             var result = default(SummaryModel);
             try
             {
-                var totalSales = await _context.Orders.SelectMany(o => o.OrderItems).SumAsync(oi => oi.Quantity * oi.UnitPrice);
+                var totalSales = await _context.Orders
+                    .Where(o=>o.PaymentStatus.ToLower() =="accepted" && o.OrderStatus.ToLower()=="delivered" )
+                    .SelectMany(o => o.OrderItems).SumAsync(oi => oi.Quantity * oi.UnitPrice);
 
                 var totalProducts = await _context.Products.CountAsync();
                 var totalOrders = await _context.Orders.CountAsync();
