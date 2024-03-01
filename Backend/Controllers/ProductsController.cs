@@ -363,7 +363,7 @@ namespace Backend.Controllers
             
         }
         [Authorize(Roles ="Admin")]
-        [HttpPost]
+        [HttpPost("Create")]
         public async Task<ApiResponse> CreateProduct ([FromForm]CreateProductDto createProductDto)
         {
             string errorMessage = default;
@@ -439,7 +439,7 @@ namespace Backend.Controllers
 
         }
         [Authorize(Roles = "Admin")]
-        [HttpPut("{id}")]
+        [HttpPut("Update/{id}")]
         public async Task<ApiResponse> UpdateProduct (int id  , [FromForm]CreateProductDto createProductDto)
         {
             string errorMessage = default;
@@ -549,7 +549,7 @@ namespace Backend.Controllers
             };
         }
         [Authorize(Roles ="Admin")]
-        [HttpDelete("{id}")]
+        [HttpDelete("Delete/{id}")]
         public async Task<ApiResponse> DeleteProduct(int id)
         {
             string errorMessage = default;
