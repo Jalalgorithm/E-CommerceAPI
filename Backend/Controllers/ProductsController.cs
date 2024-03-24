@@ -2,6 +2,7 @@
 using Backend.ApiModel.Base;
 using Backend.ApiModel.Category;
 using Backend.ApiModel.Products;
+using Backend.ApiModel.Reviews;
 using Backend.Data;
 using Backend.Model;
 using Microsoft.AspNetCore.Authorization;
@@ -126,7 +127,7 @@ namespace Backend.Controllers
                 ErrorMessage = errorMessage
             };
         }
-        [AllowAnonymous]
+
         [HttpGet]
         public async Task<ApiResponse> GetProducts(string? search ,string? category , int? categoryId ,  int? minPrice , int? maxPrice ,
             string? sort , string? order, int? page)
@@ -252,7 +253,7 @@ namespace Backend.Controllers
                 if (page is null || page < 1)
                     page = 1;
 
-                int pageSize = 5;
+                int pageSize = 10;
                 int totalPages = 0;
 
                 decimal count = query.Count();
@@ -322,6 +323,7 @@ namespace Backend.Controllers
                 var product = await _context.Products
                     .Include(c => c.Category)
                     .Include(i => i.Otherimages)
+                    .Include(r=>r.Reviews)
                     .Select(product => new GetProductDto
                     {
                         Id = product.Id,
@@ -332,7 +334,13 @@ namespace Backend.Controllers
                         QuantityInStock = product.QuantityInStock,
                         DisplayImage = product.DisplayImage,
                         Brand = product.Brand,
-                        Images = product.Otherimages.Select(image => image.FilePath).ToList()
+                        Images = product.Otherimages.Select(image => image.FilePath).ToList(),
+                        Reviews = product.Reviews.Select(review => new ReviewAddDto
+                        {
+                            Comment = review.Comment,
+                            Email = review.Email,
+                            Rating = review.Rating
+                        }).ToList(),
                     }).FirstOrDefaultAsync(x => x.Id == id);
 
                 if(product is null)

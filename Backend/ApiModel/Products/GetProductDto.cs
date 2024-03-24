@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Backend.ApiModel.Reviews;
+using System.ComponentModel.DataAnnotations;
 
 namespace Backend.ApiModel.Products
 {
@@ -14,5 +15,6 @@ namespace Backend.ApiModel.Products
 
         public string CategoryName { get; set; }
         public List<string> Images { get; set; }
+        public List<ReviewAddDto> Reviews { get; set; }
     }
 }

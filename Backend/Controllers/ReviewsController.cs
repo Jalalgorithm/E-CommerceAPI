@@ -55,54 +55,6 @@ namespace Backend.Controllers
             };
         }
 
-        [HttpGet("GetReview/{productId}")]
-        public async Task<ApiResponse> GetReviewForAProduct(int productId)
-        {
-            string errorMessage = default;
-            var result = default(List<ReviewGetDto>);
-            try
-            {
-                var reviews = await _context.Reviews
-               .Where(r => r.ProductId == productId)
-               .Select(review => new ReviewGetDto
-               {
-                   Comment = review.Comment,
-                   Id = review.Id,
-                   Email = review.Email,
-                   Rating = review.Rating,
-                   ProductName = review.Product.Name
-               })
-               .ToListAsync();
-
-                if (reviews == null)
-                {
-                    Response.StatusCode = (int)HttpStatusCode.NotFound;
-
-                    return new ApiResponse
-                    {
-                        ErrorMessage = "no review available for this product"
-                    };
-
-
-                }
-
-                result = reviews;
-
-            }
-            catch (Exception ex)
-            {
-                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                errorMessage = ex.Message;
-            }
-           
-            return new ApiResponse
-            {
-                Result = result,
-                ErrorMessage = errorMessage
-            };
-        }
-
-        [Authorize(Roles = "Admin")]
         [HttpGet("average-rating/{productId}")]
         public async Task<ApiResponse> GetAverageRatingForProduct(int productId)
         {
@@ -144,7 +96,7 @@ namespace Backend.Controllers
         }
 
         [Authorize(Roles ="Admin")]
-        [HttpDelete("DeleteReview{id}")]
+        [HttpDelete("DeleteReview/{id}")]
         public async Task<ApiResponse> DeleteReview (int id)
         {
             string errorMessage = default;

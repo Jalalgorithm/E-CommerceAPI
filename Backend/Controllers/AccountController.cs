@@ -176,6 +176,85 @@ namespace Backend.Controllers
 
         }
 
+        [HttpPost("Login/admin")]
+        public async Task<ApiResponse> LoginAdmin(string email, string password)
+        {
+
+            string errorMessage = default;
+            var result = default(object);
+
+            try
+            {
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+                if (user is null)
+                {
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Email does not exist try signing up"
+                    };
+                }
+
+                if (user.Role!="Admin")
+                {
+                    Response.StatusCode = (int)HttpStatusCode.Forbidden;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Wrong personnel or detail"
+                    };
+                }
+
+                var passwordHasher = new PasswordHasher<User>();
+                var getPasssword = passwordHasher.VerifyHashedPassword(new User(), user.Password, password);
+
+                if (getPasssword == PasswordVerificationResult.Failed)
+                {
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Email or password is incorrect"
+                    };
+
+                }
+
+                var jwt = CreateJwt(user);
+
+                var userProfileInfo = new UserProfileDto()
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email,
+                    Phone = user.Phone,
+                    Address = user.Address,
+                    Role = user.Role,
+                    CreatedAt = DateTime.Now
+                };
+
+                var responses = new
+                {
+                    Token = jwt,
+                    userDetails = userProfileInfo
+                };
+
+                result = responses;
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
+
+            return new ApiResponse
+            {
+                Result = result,
+                ErrorMessage = errorMessage
+            };
+
+        }
+
 
         [HttpPost("ForgotPassword")]
         public async Task<ApiResponse> ForgotPassword (string email)
