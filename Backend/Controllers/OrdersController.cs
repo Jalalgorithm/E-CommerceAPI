@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System.Net;
 
 namespace Backend.Controllers
@@ -21,117 +22,189 @@ namespace Backend.Controllers
             _context = context;
         }
 
-        [Authorize]
-        [HttpGet]
-        public async Task<ApiResponse> GetOrders (int? page)
+        [Authorize(Roles = "Admin")]
+        [HttpGet("admin")]
+        public async Task<ApiResponse> GetOrders (int page)
         {
-            var userId = JwtReader.GetUserId(User);
-            string role =  _context.Users.Find(userId)?.Role ?? "";
+            string errorMessage = default;
 
-            IQueryable<Order> query = _context.Orders
-                .Include(u => u.User)
-                .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.Product);
+            var result = default(Pagination);
 
-            if(role != "Admin")
+            try
             {
-                query = _context.Orders.Where(u => u.UserId == userId);
-            }
-
-            query = query.OrderByDescending(o => o.Id);
-
-
-            if (page is null || page <1 )
-            {
-                page = 1;
-            }
-
-            int pageSize = 5;
-            int totalPages = 0;
-
-            decimal count = query.Count();
-            totalPages = (int) Math.Ceiling(count / pageSize);
-
-            query = query.Skip((int)(page - 1) * pageSize)
-                .Take(pageSize);
-
-
-           
-
-
-            var orders = query.ToList();
-
-
-            foreach (var order in orders)
-            {
-                foreach (var item in order.OrderItems)
+                if (page == 0 || page < 1)
                 {
-                    item.Order = null;
+                    page = 1;
                 }
 
-                order.User.Password = "";
+                int pageSize = 5;
+                int totalPages = 0;
+
+                var TotalItems = _context.Orders.Count();
+                totalPages = (int)Math.Ceiling((double)TotalItems/ pageSize);
+
+                var orders = _context.Orders
+                    .Include(o => o.OrderItems)
+                        .ThenInclude(oi => oi.Product)
+                    .OrderByDescending(o => o.CreatedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(order => new OrderViewDto
+                    {
+                        FullName = order.Name,
+                        Id = order.Id,
+                        UniqueId = order.UniqueOrderId,
+                        PaymentStatus = order.PaymentStatus,
+                        DeliveryStatus = order.OrderStatus,
+                        DateCreated = order.CreatedAt,
+                        TotalAmount = order.OrderItems.Sum(oi => oi.Quantity * oi.Product.Price),
+                    }).ToList();
+
+                if (orders is null || orders.Count == 0)
+                {
+                    Response.StatusCode = (int)HttpStatusCode.NotFound;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "No order exist"
+                    };
+                }
+
+                var response = new Pagination
+                {
+                    Data = orders,
+                    TotalPages = totalPages,
+                    Page = page,
+                    PageSize = pageSize
+                };
+
+                result = response;
             }
-
-            var response = new
+            catch (Exception ex)
             {
-                Orders = orders,
-                TotalPages = totalPages,
-                Page = page,
-                PageSize = pageSize
-            };
-
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
             return new ApiResponse
             {
-                Result = response
+                Result = result,
+                ErrorMessage = errorMessage
             };
         }
 
+
         [Authorize]
+        [HttpGet("user")]
+        public async Task<ApiResponse> GetOrdersById()
+        {
+            var userId = JwtReader.GetUserId(User);
+            string errorMessage = default;
+
+            var result = default(List<OrderViewDto>);
+
+            try
+            {
+
+                var orders = _context.Orders
+                    .Include(o => o.OrderItems)
+                        .ThenInclude(oi => oi.Product)
+                    .OrderByDescending(o => o.CreatedAt)
+                    .Where(o=>o.UserId==userId)
+                    .Select(order => new OrderViewDto
+                    {
+                        FullName = order.Name,
+                        Id = order.Id,
+                        UniqueId = order.UniqueOrderId,
+                        PaymentStatus = order.PaymentStatus,
+                        DeliveryStatus = order.OrderStatus,
+                        DateCreated = order.CreatedAt,
+                        TotalAmount = order.OrderItems.Sum(oi => oi.Quantity * oi.Product.Price),
+                    }).ToList();
+
+                if (orders is null || orders.Count==0)
+                {
+                    Response.StatusCode = (int)HttpStatusCode.NotFound;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "No order exist"
+                    };
+                }
+
+                result = orders;
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
+            }
+            return new ApiResponse
+            {
+                Result = result,
+                ErrorMessage = errorMessage
+            };
+        }
+
+
+        [Authorize(Roles ="Admin")]
         [HttpGet("{uniqueId}")]
         public async Task<ApiResponse> GetOrderByUniqueId(string uniqueId)
         {
-            var userId = JwtReader.GetUserId(User);
-            var role = _context.Users.Find(userId)?.Role ?? "";
+            string errorMessage = default;
 
-            Order? order = null;
-            if (role == "Admin")
+            var result = default(List<OrderViewDto>);
+
+            try
             {
-                order = await _context.Orders
-                    .Include(u=>u.User)
-                    .Include(oi=>oi.OrderItems)
-                    .ThenInclude(p=>p.Product)
-                    .FirstOrDefaultAsync(uid => uid.UniqueOrderId.ToLower() == uniqueId.ToLower());
-            }
-            else
-            {
-                order = await _context.Orders
-                    .Include(u => u.User)
-                    .Include(oi => oi.OrderItems)
-                    .ThenInclude(p => p.Product)
-                    .FirstOrDefaultAsync(uid => uid.UniqueOrderId.ToLower() == uniqueId.ToLower() && uid.UserId == userId);
 
-            }
-
-            if (order is null)
-            {
-                Response.StatusCode = (int)HttpStatusCode.NotFound;
-
-                return new ApiResponse
+                if (string.IsNullOrEmpty(uniqueId))
                 {
-                    ErrorMessage = "Specific order cannot be found , kindly check the order id again"
-                };
-            }
+                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
 
-            foreach (var item in order.OrderItems)
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Kindly input a value"
+                    };
+                }
+                uniqueId.ToUpper();
+
+                var order = await _context.Orders
+                     .Include(oi => oi.OrderItems)
+                     .ThenInclude(p => p.Product)
+                     .Where(o => o.UniqueOrderId == uniqueId)
+                     .Select(order => new OrderViewDto
+                     {
+                         FullName = order.Name,
+                         Id = order.Id,
+                         UniqueId = order.UniqueOrderId,
+                         PaymentStatus = order.PaymentStatus,
+                         DeliveryStatus = order.OrderStatus,
+                         DateCreated = order.CreatedAt,
+                         TotalAmount = order.OrderItems.Sum(oi => oi.Quantity * oi.Product.Price),
+                     }).ToListAsync();
+
+                if (order is null || order.Count==0 )
+                {
+                    Response.StatusCode = (int)HttpStatusCode.NotFound;
+
+                    return new ApiResponse
+                    {
+                        ErrorMessage = "Specific order cannot be found , kindly check the order id again"
+                    };
+                }
+
+                result = order;
+            }
+            catch (Exception ex)
             {
-                item.Order = null;
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorMessage = ex.Message;
             }
-
-            order.User.Password = "";
 
             return new ApiResponse
             {
-                Result = order
+                Result = result,
+                ErrorMessage = errorMessage
             };
         }
 

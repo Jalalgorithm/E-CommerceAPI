@@ -1,9 +1,11 @@
+using Backend.ApiModel.Base;
 using Backend.Data;
 using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Newtonsoft.Json;
 using Swashbuckle.AspNetCore.Filters;
 using System.Text;
 
@@ -49,6 +51,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
     };
 });
 
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowOrigin", builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
@@ -57,6 +60,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+
 // Configure the HTTP request pipeline.
 //if (app.Environment.IsDevelopment())
 //{
@@ -64,11 +68,14 @@ app.UseSwagger();
 app.UseSwaggerUI();
 //}
 
+
 app.UseCors("AllowOrigin");
 
 app.UseStaticFiles();
 
 app.UseHttpsRedirection();
+
+app.UseMiddleware<Custom401Middleware>();
 
 app.UseAuthentication();
 

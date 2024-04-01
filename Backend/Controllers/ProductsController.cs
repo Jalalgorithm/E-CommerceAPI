@@ -127,7 +127,6 @@ namespace Backend.Controllers
                 ErrorMessage = errorMessage
             };
         }
-
         [HttpGet]
         public async Task<ApiResponse> GetProducts(string? search ,string? category , int? categoryId ,  int? minPrice , int? maxPrice ,
             string? sort , string? order, int? page)

@@ -1,4 +1,5 @@
-﻿using Backend.ApiModel.Base;
+﻿using Azure;
+using Backend.ApiModel.Base;
 using Backend.ApiModel.User;
 using Backend.Data;
 using Backend.Model;
@@ -42,6 +43,8 @@ namespace Backend.Controllers
                 var emailCount = await _context.Users.CountAsync(u => u.Email == userDto.Email);
                 if (emailCount > 0)
                 {
+                    Response.StatusCode = (int) HttpStatusCode.BadRequest;
+                    
                     return new ApiResponse
                     {
                         ErrorMessage = "Email already exists"
