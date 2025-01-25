@@ -22,7 +22,7 @@ namespace Backend.Controllers
     [ApiController]
     public class AccountController : ControllerBase
     {
-        private readonly IConfiguration _configuration;
+         private readonly IConfiguration _configuration;
         private readonly ApplicationDbContext _context;
 
         public AccountController(IConfiguration configuration , ApplicationDbContext context)
@@ -278,6 +278,8 @@ namespace Backend.Controllers
                     {
                         ErrorMessage = "Email does not exist"
                     };
+
+
 
                 }
 

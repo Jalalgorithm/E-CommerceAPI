@@ -1,4 +1,4 @@
-using Backend.ApiModel.Base;
+    using Backend.ApiModel.Base;
 using Backend.Data;
 using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -17,7 +17,7 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
-{
+{   
     options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
     {
         Description = "Please Enter Token",
