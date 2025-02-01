@@ -51,8 +51,8 @@ Welcome to the E-Commerce Web API! This API provides backend functionality for a
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
-   cd <repository-folder>
+   git clone https://github.com/Jalalgorithm/E-CommerceAPI.git
+   cd E-CommerceAPI
    ```
 
 2. Restore dependencies:
@@ -95,11 +95,13 @@ Ensure you set the following environment variables in your `appsettings.json` or
 ### Authentication
 
 #### **Register a New User**
-- **POST** `/api/auth/register`
+- **POST** `/api/account/register`
 - **Request Body**:
   ```json
   {
-    "username": "john_doe",
+    "firstname": "john_doe",
+    "lastname": "john_doe",
+    "phonenumber": "1123459876",
     "email": "john.doe@example.com",
     "password": "StrongPassword123"
   }
@@ -112,7 +114,7 @@ Ensure you set the following environment variables in your `appsettings.json` or
   ```
 
 #### **Log In**
-- **POST** `/api/auth/login`
+- **POST** `/api/account/login`
 - **Request Body**:
   ```json
   {
